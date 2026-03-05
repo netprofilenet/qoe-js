@@ -32,7 +32,6 @@
     "LICENSE"
   ],
   "scripts": {
-    "prepare": "npm run build",
     "build": "vite build && tsc --emitDeclarationOnly",
     "dev": "vite build --watch",
     "test": "vitest",
