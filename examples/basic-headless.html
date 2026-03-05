@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QOE Client - Basic Example</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin: 20px 0;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-family: monospace;
+        }
+        #results {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .progress {
+            margin: 10px 0;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #0066cc;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <h1>QOE Network Quality Test</h1>
+    <p>Basic example using the QOE Client library (headless mode)</p>
+
+    <button id="quality-btn" onclick="runQualityTest()">Run Quality Test</button>
+    <button id="speed-btn" onclick="runSpeedTest()">Run Speed Test</button>
+
+    <div class="progress" id="progress-container" style="display: none;">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <script type="module">
+        // Import the QOE Client library
+        // In production, this would be: import { QOEClient } from '@qoe/client/core';
+        // For this example, we'll load it from the dist folder after building
+
+        // Placeholder for demonstration purposes
+        window.runQualityTest = async function() {
+            const statusEl = document.getElementById('status');
+            const resultsEl = document.getElementById('results');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const qualityBtn = document.getElementById('quality-btn');
+            const speedBtn = document.getElementById('speed-btn');
+
+            qualityBtn.disabled = true;
+            speedBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            statusEl.textContent = 'Starting quality test...';
+            resultsEl.textContent = '';
+
+            try {
+                // This is where you would use the QOEClient
+                // const { QOEClient } = await import('../dist/core.mjs');
+
+                // const client = new QOEClient();
+
+                // client.on('progress', (event) => {
+                //     statusEl.textContent = `${event.currentPhase} - ${event.percentage}%`;
+                //     progressBar.style.width = `${event.percentage}%`;
+                // });
+
+                // const results = await client.runQualityTest();
+
+                // Format and display results
+                // resultsEl.textContent = JSON.stringify(results, null, 2);
+
+                statusEl.textContent = 'Library needs to be built first. Run: npm run build';
+                resultsEl.textContent = 'Example usage:\n\n' +
+                    'import { QOEClient } from \'@qoe/client/core\';\n\n' +
+                    'const client = new QOEClient();\n' +
+                    'const results = await client.runQualityTest();\n\n' +
+                    'console.log(`Download: ${results.download.bandwidthMbps} Mbps`);\n' +
+                    'console.log(`Upload: ${results.upload.bandwidthMbps} Mbps`);\n' +
+                    'console.log(`Latency: ${results.idleLatency.median} ms`);\n' +
+                    'console.log(`Packet Loss: ${results.packetLoss.lossPercent}%`);';
+
+            } catch (error) {
+                statusEl.textContent = `Error: ${error.message}`;
+                resultsEl.textContent = error.stack;
+            } finally {
+                qualityBtn.disabled = false;
+                speedBtn.disabled = false;
+                progressContainer.style.display = 'none';
+            }
+        };
+
+        window.runSpeedTest = async function() {
+            const statusEl = document.getElementById('status');
+            const resultsEl = document.getElementById('results');
+
+            statusEl.textContent = 'Speed test not yet implemented in this example';
+            resultsEl.textContent = 'See basic-headless.html for quality test example';
+        };
+    </script>
+</body>
+</html>
