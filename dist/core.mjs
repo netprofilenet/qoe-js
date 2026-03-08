@@ -248,6 +248,7 @@ function mergeConfig(userConfig = {}, mode = "quality") {
   const defaults = mode === "speed" ? getSpeedModeConfig() : getQualityModeConfig();
   return {
     mode,
+    authToken: userConfig.authToken,
     downloadTests: userConfig.downloadTests || defaults.downloadTests,
     uploadTests: userConfig.uploadTests || defaults.uploadTests,
     bandwidthFinishDuration: userConfig.bandwidthFinishDuration ?? defaults.bandwidthFinishDuration,
@@ -358,6 +359,9 @@ class BandwidthTest {
     this.config = config;
     this.eventEmitter = eventEmitter;
   }
+  get authHeaders() {
+    return this.config.authToken ? { "Authorization": `Bearer ${this.config.authToken}` } : {};
+  }
   /**
    * Request the test to stop gracefully
    */
@@ -382,7 +386,9 @@ class BandwidthTest {
       if (this.stopRequested) break;
       try {
         const start = performance.now();
-        const response = await fetch(`${this.config.apiBaseUrl}/__down?bytes=${test.size}`);
+        const response = await fetch(`${this.config.apiBaseUrl}/__down?bytes=${test.size}`, {
+          headers: this.authHeaders
+        });
         const buffer = await response.arrayBuffer();
         const totalBytes = buffer.byteLength;
         const adjustedDuration = Math.max(performance.now() - start, 1);
@@ -434,7 +440,7 @@ class BandwidthTest {
         const response = await fetch(fullUrl, {
           method: "POST",
           body: data,
-          headers: { "Content-Type": "application/octet-stream" }
+          headers: { "Content-Type": "application/octet-stream", ...this.authHeaders }
         });
         await response.text();
         const fallbackDuration = performance.now() - fallbackStart;
@@ -486,7 +492,9 @@ class BandwidthTest {
         if (this.stopRequested) break;
         try {
           const start = performance.now();
-          const response = await fetch(`${this.config.apiBaseUrl}/__down?bytes=${test.size}`);
+          const response = await fetch(`${this.config.apiBaseUrl}/__down?bytes=${test.size}`, {
+            headers: this.authHeaders
+          });
           const buffer = await response.arrayBuffer();
           const totalBytes = buffer.byteLength;
           const adjustedDuration = Math.max(performance.now() - start, 1);
@@ -564,7 +572,7 @@ class BandwidthTest {
           const response = await fetch(fullUrl, {
             method: "POST",
             body: data,
-            headers: { "Content-Type": "application/octet-stream" }
+            headers: { "Content-Type": "application/octet-stream", ...this.authHeaders }
           });
           await response.text();
           const fallbackDuration = performance.now() - fallbackStart;
@@ -651,7 +659,7 @@ class BandwidthTest {
           const response = await fetch(fullUrl, {
             method: "POST",
             body: data,
-            headers: { "Content-Type": "application/octet-stream" }
+            headers: { "Content-Type": "application/octet-stream", ...this.authHeaders }
           });
           await response.text();
           const rtDuration = getUploadDuration(fullUrl);
@@ -714,8 +722,9 @@ class WebRTCConnection {
    * @param signalingUrl - WebSocket signaling server URL (ws:// or wss://)
    * @param iceServers - Array of STUN/TURN servers
    * @param eventEmitter - Optional event emitter for debug events
+   * @param authToken - Optional bearer token for authenticated servers
    */
-  constructor(signalingUrl, iceServers, eventEmitter) {
+  constructor(signalingUrl, iceServers, eventEmitter, authToken) {
     this.pc = null;
     this.dataChannel = null;
     this.ws = null;
@@ -725,6 +734,7 @@ class WebRTCConnection {
     this.signalingUrl = signalingUrl;
     this.iceServers = iceServers;
     this.eventEmitter = eventEmitter || new EventEmitter();
+    this.authToken = authToken;
   }
   /**
    * Establish WebRTC connection via WebSocket signaling
@@ -733,7 +743,8 @@ class WebRTCConnection {
   async connect() {
     if (this.connected) return;
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.signalingUrl);
+      const wsUrl = this.authToken ? `${this.signalingUrl}?token=${encodeURIComponent(this.authToken)}` : this.signalingUrl;
+      this.ws = new WebSocket(wsUrl);
       this.ws.onopen = async () => {
         this.eventEmitter.emit("debug", { type: "websocket", message: "WebSocket connected" });
         this.pc = new RTCPeerConnection({
@@ -942,7 +953,8 @@ class LatencyTest {
       this.webrtcConnection = new WebRTCConnection(
         this.config.webrtcSignalingUrl,
         this.config.iceServers,
-        this.eventEmitter
+        this.eventEmitter,
+        this.config.authToken
       );
     }
     try {
@@ -968,7 +980,9 @@ class LatencyTest {
           rtt = result.rtt < 0 ? null : result.rtt;
         } else {
           const start = performance.now();
-          await fetch(`${this.config.apiBaseUrl}/__latency`);
+          await fetch(`${this.config.apiBaseUrl}/__latency`, {
+            headers: this.config.authToken ? { "Authorization": `Bearer ${this.config.authToken}` } : {}
+          });
           rtt = performance.now() - start;
         }
         if (rtt !== null) {
@@ -1025,7 +1039,9 @@ class LatencyTest {
             rtt = result.rtt < 0 ? null : result.rtt;
           } else {
             const start = performance.now();
-            await fetch(`${this.config.apiBaseUrl}/__latency`);
+            await fetch(`${this.config.apiBaseUrl}/__latency`, {
+              headers: this.config.authToken ? { "Authorization": `Bearer ${this.config.authToken}` } : {}
+            });
             rtt = performance.now() - start;
           }
           if (rtt !== null) {
@@ -1140,7 +1156,8 @@ class PacketLossTest {
   async measure() {
     this.stopRequested = false;
     try {
-      const ws = new WebSocket(this.config.webrtcSignalingUrl);
+      const wsUrl = this.config.authToken ? `${this.config.webrtcSignalingUrl}?token=${encodeURIComponent(this.config.authToken)}` : this.config.webrtcSignalingUrl;
+      const ws = new WebSocket(wsUrl);
       await new Promise((resolve, reject) => {
         ws.onopen = () => resolve();
         ws.onerror = () => reject(new Error("WebSocket connection failed"));
@@ -1275,6 +1292,118 @@ class PacketLossTest {
     }
   }
 }
+class OrchestratorClient {
+  constructor(baseUrl) {
+    this.baseUrl = baseUrl.replace(/\/+$/, "");
+  }
+  /**
+   * Fetch the list of available test servers from the orchestrator
+   */
+  async fetchServers() {
+    const resp = await fetch(`${this.baseUrl}/api/servers`);
+    if (!resp.ok) throw new Error(`Failed to fetch servers: ${resp.status}`);
+    const data = await resp.json();
+    return data.servers;
+  }
+  /**
+   * Request a test token for a specific server
+   */
+  async requestTestToken(serverId) {
+    const resp = await fetch(`${this.baseUrl}/api/test-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serverId })
+    });
+    if (!resp.ok) throw new Error(`Failed to get test token: ${resp.status}`);
+    return resp.json();
+  }
+  /**
+   * Submit test results to the orchestrator
+   */
+  async submitResults(token, results) {
+    const resp = await fetch(`${this.baseUrl}/api/results`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ ...results, token })
+    });
+    if (!resp.ok) throw new Error(`Failed to submit results: ${resp.status}`);
+  }
+  /**
+   * Convenience: run a quality test through the orchestrator.
+   * Discovers best server (or uses specified), acquires token, runs test, submits results.
+   */
+  async runQualityTest(serverId) {
+    const server = serverId ? (await this.fetchServers()).find((s) => s.id === serverId) : await this.discoverBestServer();
+    if (!server) throw new Error(serverId ? `Server not found: ${serverId}` : "No servers available");
+    const tokenResp = await this.requestTestToken(server.id);
+    const client = new QOEClient({ authToken: tokenResp.token });
+    client.setServer(server);
+    const results = await client.runQualityTest();
+    await this.submitResults(tokenResp.token, {
+      serverId: server.id,
+      testMode: "quality",
+      download: { bandwidthMbps: results.download.bandwidthMbps },
+      upload: { bandwidthMbps: results.upload.bandwidthMbps },
+      idleLatency: { median: results.idleLatency.median },
+      downloadLatency: results.downloadLatency ? { median: results.downloadLatency.median } : void 0,
+      uploadLatency: results.uploadLatency ? { median: results.uploadLatency.median } : void 0,
+      packetLoss: { lossPercent: results.packetLoss.lossPercent },
+      bufferbloat: results.bufferbloat,
+      qualityScore: results.qualityScore
+    });
+    return { results, testId: tokenResp.testId };
+  }
+  /**
+   * Convenience: run a speed test through the orchestrator.
+   * Discovers best server (or uses specified), acquires token, runs test, submits results.
+   */
+  async runSpeedTest(serverId) {
+    const server = serverId ? (await this.fetchServers()).find((s) => s.id === serverId) : await this.discoverBestServer();
+    if (!server) throw new Error(serverId ? `Server not found: ${serverId}` : "No servers available");
+    const tokenResp = await this.requestTestToken(server.id);
+    const client = new QOEClient({ authToken: tokenResp.token, mode: "speed" });
+    client.setServer(server);
+    const results = await client.runSpeedTest();
+    await this.submitResults(tokenResp.token, {
+      serverId: server.id,
+      testMode: "speed",
+      download: { bandwidthMbps: results.download.bandwidthMbps },
+      upload: { bandwidthMbps: results.upload.bandwidthMbps },
+      idleLatency: { median: results.idleLatency.median },
+      packetLoss: { lossPercent: results.packetLoss.lossPercent }
+    });
+    return { results, testId: tokenResp.testId };
+  }
+  /**
+   * Discover the best server by measuring latency to all enabled servers
+   */
+  async discoverBestServer() {
+    const servers = await this.fetchServers();
+    const enabled = servers.filter((s) => s.enabled);
+    if (enabled.length === 0) throw new Error("No enabled servers found");
+    const latencies = await Promise.all(
+      enabled.map(async (server) => {
+        try {
+          const start = performance.now();
+          const resp = await fetch(`${server.httpUrl}/__latency`, {
+            signal: AbortSignal.timeout(5e3)
+          });
+          if (!resp.ok) return { server, latency: Infinity };
+          const latency = performance.now() - start;
+          return { server, latency };
+        } catch {
+          return { server, latency: Infinity };
+        }
+      })
+    );
+    latencies.sort((a, b) => a.latency - b.latency);
+    if (latencies[0].latency === Infinity) throw new Error("No reachable servers found");
+    return latencies[0].server;
+  }
+}
 async function httpDownload(config, context) {
   if (config.type !== "httpDownload") {
     throw new Error("Invalid config type for httpDownload");
@@ -1283,8 +1412,10 @@ async function httpDownload(config, context) {
   const url = config.baseUrl ? `${config.baseUrl}${config.url}` : config.url;
   try {
     const fullUrl = `${url}?bytes=${config.size}`;
+    const headers = {};
+    if (config.authToken) headers["Authorization"] = `Bearer ${config.authToken}`;
     const start = performance.now();
-    const response = await fetch(fullUrl, { signal: context.signal });
+    const response = await fetch(fullUrl, { signal: context.signal, headers });
     const buffer = await response.arrayBuffer();
     const totalBytes = buffer.byteLength;
     const duration = Math.max(performance.now() - start, 1e-3);
@@ -1318,10 +1449,12 @@ async function httpUpload(config, context) {
     const rid = requestId();
     const fullUrl = `${url}?_rid=${rid}`;
     const transferStart = performance.now();
+    const uploadHeaders = { "Content-Type": "application/octet-stream" };
+    if (config.authToken) uploadHeaders["Authorization"] = `Bearer ${config.authToken}`;
     const response = await fetch(fullUrl, {
       method: "POST",
       body: data,
-      headers: { "Content-Type": "application/octet-stream" },
+      headers: uploadHeaders,
       signal: context.signal
     });
     await response.text();
@@ -1370,8 +1503,10 @@ async function latencyProbe(config, context) {
       }
     } else {
       const url = config.baseUrl ? `${config.baseUrl}${config.url}` : config.url;
+      const probeHeaders = {};
+      if (config.authToken) probeHeaders["Authorization"] = `Bearer ${config.authToken}`;
       const start = performance.now();
-      await fetch(url, { signal: context.signal });
+      await fetch(url, { signal: context.signal, headers: probeHeaders });
       rtt = performance.now() - start;
     }
     return {
@@ -1397,7 +1532,8 @@ async function webrtcConnect(config, _context) {
   }
   const timestamp = performance.now();
   try {
-    const ws = new WebSocket(config.signalingUrl);
+    const signalingUrl = config.authToken ? `${config.signalingUrl}?token=${encodeURIComponent(config.authToken)}` : config.signalingUrl;
+    const ws = new WebSocket(signalingUrl);
     await new Promise((resolve, reject) => {
       ws.onopen = () => resolve();
       ws.onerror = () => reject(new Error("WebSocket connection failed"));
@@ -2289,6 +2425,27 @@ class QOEClient {
     }
   }
   /**
+   * Create a QOEClient configured from an orchestrator.
+   * Fetches server list, picks the best server (or the one specified), and acquires a test token.
+   */
+  static async fromOrchestrator(url, serverId) {
+    const orchestrator = new OrchestratorClient(url);
+    const servers = await orchestrator.fetchServers();
+    let server;
+    if (serverId) {
+      server = servers.find((s) => s.id === serverId);
+      if (!server) throw new Error(`Server not found: ${serverId}`);
+    } else {
+      const enabled = servers.filter((s) => s.enabled);
+      if (enabled.length === 0) throw new Error("No enabled servers found");
+      server = enabled[0];
+    }
+    const tokenResp = await orchestrator.requestTestToken(server.id);
+    const client = new QOEClient({ authToken: tokenResp.token });
+    client.setServer(server);
+    return { client, testId: tokenResp.testId, token: tokenResp.token, orchestrator };
+  }
+  /**
    * Run quality mode test (Cloudflare-style)
    * @returns Promise with quality test results
    */
@@ -2307,6 +2464,7 @@ class QOEClient {
     const bandwidthTest = new BandwidthTest(
       {
         apiBaseUrl: server.httpUrl,
+        authToken: config.authToken,
         downloadTests: config.downloadTests,
         uploadTests: config.uploadTests,
         bandwidthFinishDuration: config.bandwidthFinishDuration
@@ -2316,6 +2474,7 @@ class QOEClient {
     const latencyTest = new LatencyTest(
       {
         apiBaseUrl: server.httpUrl,
+        authToken: config.authToken,
         webrtcSignalingUrl: server.webrtcSignalingUrl,
         iceServers,
         idleLatencyCount: config.idleLatencyCount,
@@ -2327,6 +2486,7 @@ class QOEClient {
     const packetLossTest = new PacketLossTest(
       {
         webrtcSignalingUrl: server.webrtcSignalingUrl,
+        authToken: config.authToken,
         iceServers,
         packetLossCount: config.packetLossCount,
         packetLossDuration: config.packetLossDuration
@@ -2517,6 +2677,7 @@ class QOEClient {
     const bandwidthTest = new BandwidthTest(
       {
         apiBaseUrl: server.httpUrl,
+        authToken: config.authToken,
         downloadTests: config.downloadTests,
         uploadTests: config.uploadTests,
         bandwidthFinishDuration: config.bandwidthFinishDuration
@@ -2526,6 +2687,7 @@ class QOEClient {
     const latencyTest = new LatencyTest(
       {
         apiBaseUrl: server.httpUrl,
+        authToken: config.authToken,
         webrtcSignalingUrl: server.webrtcSignalingUrl,
         iceServers,
         idleLatencyCount: config.idleLatencyCount,
@@ -2537,6 +2699,7 @@ class QOEClient {
     const packetLossTest = new PacketLossTest(
       {
         webrtcSignalingUrl: server.webrtcSignalingUrl,
+        authToken: config.authToken,
         iceServers,
         packetLossCount: config.packetLossCount,
         packetLossDuration: config.packetLossDuration
@@ -3480,6 +3643,7 @@ export {
   MetricAdapter,
   MetricCollector,
   MetricObservable,
+  OrchestratorClient,
   PACKET_LOSS_COUNT,
   PACKET_LOSS_DURATION,
   PRIMITIVES,

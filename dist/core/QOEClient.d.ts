@@ -4,6 +4,7 @@
 import { TestConfig } from './config/TestConfig';
 import { ServerInfo } from './types/server';
 import { QualityResults, SpeedResults, ApplicationResults } from './types/results';
+import { OrchestratorClient } from './OrchestratorClient';
 import { TestRunner } from './composition/TestRunner';
 import { MetricCollector, RawMetric } from './metrics/MetricCollector';
 import { MetricObserver } from './observers/Observer';
@@ -22,6 +23,16 @@ export declare class QOEClient {
      * @param config - Optional test configuration
      */
     constructor(config?: TestConfig);
+    /**
+     * Create a QOEClient configured from an orchestrator.
+     * Fetches server list, picks the best server (or the one specified), and acquires a test token.
+     */
+    static fromOrchestrator(url: string, serverId?: string): Promise<{
+        client: QOEClient;
+        testId: string;
+        token: string;
+        orchestrator: OrchestratorClient;
+    }>;
     /**
      * Run quality mode test (Cloudflare-style)
      * @returns Promise with quality test results

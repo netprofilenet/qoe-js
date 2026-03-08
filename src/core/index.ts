@@ -5,6 +5,10 @@
 // Main client
 export { QOEClient } from './QOEClient';
 
+// Orchestrator
+export { OrchestratorClient } from './OrchestratorClient';
+export type { TestTokenResponse } from './OrchestratorClient';
+
 // Configuration
 export type { TestConfig, TestMode, AppTest } from './config/TestConfig';
 export { mergeConfig, getQualityModeConfig, getSpeedModeConfig } from './config/TestConfig';

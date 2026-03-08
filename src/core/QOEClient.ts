@@ -15,6 +15,7 @@ import {
   SpeedResults,
   ApplicationResults
 } from './types/results';
+import { OrchestratorClient } from './OrchestratorClient';
 
 // New toolkit imports
 import { TestRunner } from './composition/TestRunner';
@@ -69,6 +70,37 @@ export class QOEClient {
   }
 
   /**
+   * Create a QOEClient configured from an orchestrator.
+   * Fetches server list, picks the best server (or the one specified), and acquires a test token.
+   */
+  static async fromOrchestrator(
+    url: string,
+    serverId?: string,
+  ): Promise<{ client: QOEClient; testId: string; token: string; orchestrator: OrchestratorClient }> {
+    const orchestrator = new OrchestratorClient(url);
+
+    const servers = await orchestrator.fetchServers();
+    let server: ServerInfo | undefined;
+
+    if (serverId) {
+      server = servers.find((s) => s.id === serverId);
+      if (!server) throw new Error(`Server not found: ${serverId}`);
+    } else {
+      // Pick first enabled server (simple for factory — use OrchestratorClient for full discovery)
+      const enabled = servers.filter((s) => s.enabled);
+      if (enabled.length === 0) throw new Error('No enabled servers found');
+      server = enabled[0];
+    }
+
+    const tokenResp = await orchestrator.requestTestToken(server.id);
+
+    const client = new QOEClient({ authToken: tokenResp.token });
+    client.setServer(server);
+
+    return { client, testId: tokenResp.testId, token: tokenResp.token, orchestrator };
+  }
+
+  /**
    * Run quality mode test (Cloudflare-style)
    * @returns Promise with quality test results
    */
@@ -90,6 +122,7 @@ export class QOEClient {
     const bandwidthTest = new BandwidthTest(
       {
         apiBaseUrl: server.httpUrl,
+        authToken: config.authToken,
         downloadTests: config.downloadTests!,
         uploadTests: config.uploadTests!,
         bandwidthFinishDuration: config.bandwidthFinishDuration!
@@ -100,6 +133,7 @@ export class QOEClient {
     const latencyTest = new LatencyTest(
       {
         apiBaseUrl: server.httpUrl,
+        authToken: config.authToken,
         webrtcSignalingUrl: server.webrtcSignalingUrl,
         iceServers,
         idleLatencyCount: config.idleLatencyCount!,
@@ -112,6 +146,7 @@ export class QOEClient {
     const packetLossTest = new PacketLossTest(
       {
         webrtcSignalingUrl: server.webrtcSignalingUrl,
+        authToken: config.authToken,
         iceServers,
         packetLossCount: config.packetLossCount!,
         packetLossDuration: config.packetLossDuration!
@@ -355,6 +390,7 @@ export class QOEClient {
     const bandwidthTest = new BandwidthTest(
       {
         apiBaseUrl: server.httpUrl,
+        authToken: config.authToken,
         downloadTests: config.downloadTests!,
         uploadTests: config.uploadTests!,
         bandwidthFinishDuration: config.bandwidthFinishDuration!
@@ -365,6 +401,7 @@ export class QOEClient {
     const latencyTest = new LatencyTest(
       {
         apiBaseUrl: server.httpUrl,
+        authToken: config.authToken,
         webrtcSignalingUrl: server.webrtcSignalingUrl,
         iceServers,
         idleLatencyCount: config.idleLatencyCount!,
@@ -377,6 +414,7 @@ export class QOEClient {
     const packetLossTest = new PacketLossTest(
       {
         webrtcSignalingUrl: server.webrtcSignalingUrl,
+        authToken: config.authToken,
         iceServers,
         packetLossCount: config.packetLossCount!,
         packetLossDuration: config.packetLossDuration!
