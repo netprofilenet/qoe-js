@@ -11,6 +11,7 @@ import { TestSize } from '../config/constants';
 
 export interface BandwidthTestConfig {
   apiBaseUrl: string;
+  authToken?: string;
   downloadTests: TestSize[];
   uploadTests: TestSize[];
   bandwidthFinishDuration: number;  // ms - stop if single request exceeds this
@@ -24,6 +25,12 @@ export class BandwidthTest {
   constructor(config: BandwidthTestConfig, eventEmitter: EventEmitter) {
     this.config = config;
     this.eventEmitter = eventEmitter;
+  }
+
+  private get authHeaders(): Record<string, string> {
+    return this.config.authToken
+      ? { 'Authorization': `Bearer ${this.config.authToken}` }
+      : {};
   }
 
   /**
@@ -54,7 +61,9 @@ export class BandwidthTest {
 
       try {
         const start = performance.now();
-        const response = await fetch(`${this.config.apiBaseUrl}/__down?bytes=${test.size}`);
+        const response = await fetch(`${this.config.apiBaseUrl}/__down?bytes=${test.size}`, {
+            headers: this.authHeaders
+          });
         const buffer = await response.arrayBuffer();
         const totalBytes = buffer.byteLength;
         const adjustedDuration = Math.max(performance.now() - start, 1);
@@ -122,7 +131,7 @@ export class BandwidthTest {
         const response = await fetch(fullUrl, {
           method: 'POST',
           body: data,
-          headers: { 'Content-Type': 'application/octet-stream' }
+          headers: { 'Content-Type': 'application/octet-stream', ...this.authHeaders }
         });
         await response.text();
         const fallbackDuration = performance.now() - fallbackStart;
@@ -190,7 +199,9 @@ export class BandwidthTest {
 
         try {
           const start = performance.now();
-          const response = await fetch(`${this.config.apiBaseUrl}/__down?bytes=${test.size}`);
+          const response = await fetch(`${this.config.apiBaseUrl}/__down?bytes=${test.size}`, {
+            headers: this.authHeaders
+          });
           const buffer = await response.arrayBuffer();
           const totalBytes = buffer.byteLength;
           const adjustedDuration = Math.max(performance.now() - start, 1);
@@ -292,7 +303,7 @@ export class BandwidthTest {
           const response = await fetch(fullUrl, {
             method: 'POST',
             body: data,
-            headers: { 'Content-Type': 'application/octet-stream' }
+            headers: { 'Content-Type': 'application/octet-stream', ...this.authHeaders }
           });
           await response.text();
           const fallbackDuration = performance.now() - fallbackStart;
@@ -409,7 +420,7 @@ export class BandwidthTest {
           const response = await fetch(fullUrl, {
             method: 'POST',
             body: data,
-            headers: { 'Content-Type': 'application/octet-stream' }
+            headers: { 'Content-Type': 'application/octet-stream', ...this.authHeaders }
           });
           await response.text();
           const rtDuration = getUploadDuration(fullUrl);

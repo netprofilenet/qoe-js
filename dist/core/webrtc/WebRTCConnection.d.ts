@@ -18,13 +18,15 @@ export declare class WebRTCConnection {
     private eventEmitter;
     private signalingUrl;
     private iceServers;
+    private authToken?;
     /**
      * Create a new WebRTC connection
      * @param signalingUrl - WebSocket signaling server URL (ws:// or wss://)
      * @param iceServers - Array of STUN/TURN servers
      * @param eventEmitter - Optional event emitter for debug events
+     * @param authToken - Optional bearer token for authenticated servers
      */
-    constructor(signalingUrl: string, iceServers: RTCIceServer[], eventEmitter?: EventEmitter);
+    constructor(signalingUrl: string, iceServers: RTCIceServer[], eventEmitter?: EventEmitter, authToken?: string);
     /**
      * Establish WebRTC connection via WebSocket signaling
      * @returns Promise that resolves when connection is established

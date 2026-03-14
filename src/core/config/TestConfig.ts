@@ -23,6 +23,9 @@ export type TestMode = 'quality' | 'speed' | 'application';
 export type AppTest = 'streaming' | 'gaming' | 'conference' | 'voip' | 'browsing';
 
 export interface TestConfig {
+  // Authentication
+  authToken?: string;  // Bearer token for authenticated test servers
+
   // Test mode
   mode?: TestMode;
   appTests?: AppTest[];
@@ -58,7 +61,7 @@ export interface TestConfig {
 /**
  * Get default configuration for quality mode
  */
-export function getQualityModeConfig(): Required<Omit<TestConfig, 'mode' | 'appTests' | 'serverConfig'>> {
+export function getQualityModeConfig(): Required<Omit<TestConfig, 'mode' | 'appTests' | 'serverConfig' | 'authToken'>> {
   return {
     downloadTests: QUALITY_MODE_DOWNLOAD_TESTS,
     uploadTests: QUALITY_MODE_UPLOAD_TESTS,
@@ -77,7 +80,7 @@ export function getQualityModeConfig(): Required<Omit<TestConfig, 'mode' | 'appT
 /**
  * Get default configuration for speed mode
  */
-export function getSpeedModeConfig(): Required<Omit<TestConfig, 'mode' | 'appTests' | 'serverConfig'>> {
+export function getSpeedModeConfig(): Required<Omit<TestConfig, 'mode' | 'appTests' | 'serverConfig' | 'authToken'>> {
   return {
     downloadTests: SPEED_MODE_DOWNLOAD_TESTS,
     uploadTests: SPEED_MODE_UPLOAD_TESTS,
@@ -101,6 +104,7 @@ export function mergeConfig(userConfig: TestConfig = {}, mode: TestMode = 'quali
 
   return {
     mode,
+    authToken: userConfig.authToken,
     downloadTests: userConfig.downloadTests || defaults.downloadTests,
     uploadTests: userConfig.uploadTests || defaults.uploadTests,
     bandwidthFinishDuration: userConfig.bandwidthFinishDuration ?? defaults.bandwidthFinishDuration,

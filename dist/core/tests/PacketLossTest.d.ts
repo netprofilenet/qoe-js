@@ -5,6 +5,7 @@ import { EventEmitter } from '../utils/events';
 import { PacketLossResult } from '../types/results';
 export interface PacketLossTestConfig {
     webrtcSignalingUrl: string;
+    authToken?: string;
     iceServers: RTCIceServer[];
     packetLossCount: number;
     packetLossDuration: number;

@@ -6,6 +6,7 @@ import { BandwidthResult, BandwidthSample } from '../types/results';
 import { TestSize } from '../config/constants';
 export interface BandwidthTestConfig {
     apiBaseUrl: string;
+    authToken?: string;
     downloadTests: TestSize[];
     uploadTests: TestSize[];
     bandwidthFinishDuration: number;
@@ -15,6 +16,7 @@ export declare class BandwidthTest {
     private eventEmitter;
     private stopRequested;
     constructor(config: BandwidthTestConfig, eventEmitter: EventEmitter);
+    private get authHeaders();
     /**
      * Request the test to stop gracefully
      */

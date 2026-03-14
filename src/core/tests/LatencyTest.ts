@@ -10,6 +10,7 @@ import { WebRTCConnection } from '../webrtc/WebRTCConnection';
 
 export interface LatencyTestConfig {
   apiBaseUrl: string;
+  authToken?: string;
   webrtcSignalingUrl: string;
   iceServers: RTCIceServer[];
   idleLatencyCount: number;
@@ -57,7 +58,8 @@ export class LatencyTest {
       this.webrtcConnection = new WebRTCConnection(
         this.config.webrtcSignalingUrl,
         this.config.iceServers,
-        this.eventEmitter
+        this.eventEmitter,
+        this.config.authToken
       );
     }
 
@@ -89,7 +91,9 @@ export class LatencyTest {
         } else {
           // Fallback to HTTP
           const start = performance.now();
-          await fetch(`${this.config.apiBaseUrl}/__latency`);
+          await fetch(`${this.config.apiBaseUrl}/__latency`, {
+              headers: this.config.authToken ? { 'Authorization': `Bearer ${this.config.authToken}` } : {}
+            });
           rtt = performance.now() - start;
         }
 
@@ -161,7 +165,9 @@ export class LatencyTest {
           } else {
             // Fallback to HTTP
             const start = performance.now();
-            await fetch(`${this.config.apiBaseUrl}/__latency`);
+            await fetch(`${this.config.apiBaseUrl}/__latency`, {
+              headers: this.config.authToken ? { 'Authorization': `Bearer ${this.config.authToken}` } : {}
+            });
             rtt = performance.now() - start;
           }
 

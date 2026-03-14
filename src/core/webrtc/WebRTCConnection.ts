@@ -23,16 +23,20 @@ export class WebRTCConnection {
   private signalingUrl: string;
   private iceServers: RTCIceServer[];
 
+  private authToken?: string;
+
   /**
    * Create a new WebRTC connection
    * @param signalingUrl - WebSocket signaling server URL (ws:// or wss://)
    * @param iceServers - Array of STUN/TURN servers
    * @param eventEmitter - Optional event emitter for debug events
+   * @param authToken - Optional bearer token for authenticated servers
    */
-  constructor(signalingUrl: string, iceServers: RTCIceServer[], eventEmitter?: EventEmitter) {
+  constructor(signalingUrl: string, iceServers: RTCIceServer[], eventEmitter?: EventEmitter, authToken?: string) {
     this.signalingUrl = signalingUrl;
     this.iceServers = iceServers;
     this.eventEmitter = eventEmitter || new EventEmitter();
+    this.authToken = authToken;
   }
 
   /**
@@ -43,8 +47,12 @@ export class WebRTCConnection {
     if (this.connected) return;
 
     return new Promise((resolve, reject) => {
-      // Create WebSocket for signaling
-      this.ws = new WebSocket(this.signalingUrl);
+      // Create WebSocket for signaling (pass token as query param since
+      // browser WebSocket API doesn't support custom headers)
+      const wsUrl = this.authToken
+        ? `${this.signalingUrl}?token=${encodeURIComponent(this.authToken)}`
+        : this.signalingUrl;
+      this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = async () => {
         this.eventEmitter.emit('debug', { type: 'websocket', message: 'WebSocket connected' });

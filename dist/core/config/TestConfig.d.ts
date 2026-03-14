@@ -5,6 +5,7 @@ import { TestSize } from './constants';
 export type TestMode = 'quality' | 'speed' | 'application';
 export type AppTest = 'streaming' | 'gaming' | 'conference' | 'voip' | 'browsing';
 export interface TestConfig {
+    authToken?: string;
     mode?: TestMode;
     appTests?: AppTest[];
     downloadTests?: TestSize[];
@@ -28,11 +29,11 @@ export interface TestConfig {
 /**
  * Get default configuration for quality mode
  */
-export declare function getQualityModeConfig(): Required<Omit<TestConfig, 'mode' | 'appTests' | 'serverConfig'>>;
+export declare function getQualityModeConfig(): Required<Omit<TestConfig, 'mode' | 'appTests' | 'serverConfig' | 'authToken'>>;
 /**
  * Get default configuration for speed mode
  */
-export declare function getSpeedModeConfig(): Required<Omit<TestConfig, 'mode' | 'appTests' | 'serverConfig'>>;
+export declare function getSpeedModeConfig(): Required<Omit<TestConfig, 'mode' | 'appTests' | 'serverConfig' | 'authToken'>>;
 /**
  * Merge user config with defaults
  */

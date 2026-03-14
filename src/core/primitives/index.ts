@@ -36,8 +36,11 @@ export async function httpDownload(
     // TTFB is tiny (GET request), so duration ≈ body transfer time.
     // arrayBuffer() blocks until the browser has received all bytes
     // through the network (including any throttle), giving accurate timing.
+    const headers: Record<string, string> = {};
+    if (config.authToken) headers['Authorization'] = `Bearer ${config.authToken}`;
+
     const start = performance.now();
-    const response = await fetch(fullUrl, { signal: context.signal });
+    const response = await fetch(fullUrl, { signal: context.signal, headers });
     const buffer = await response.arrayBuffer();
     const totalBytes = buffer.byteLength;
     const duration = Math.max(performance.now() - start, 0.001);
@@ -87,10 +90,13 @@ export async function httpUpload(
 
     // Start timing after data is ready — only measure the actual transfer
     const transferStart = performance.now();
+    const uploadHeaders: Record<string, string> = { 'Content-Type': 'application/octet-stream' };
+    if (config.authToken) uploadHeaders['Authorization'] = `Bearer ${config.authToken}`;
+
     const response = await fetch(fullUrl, {
       method: 'POST',
       body: data,
-      headers: { 'Content-Type': 'application/octet-stream' },
+      headers: uploadHeaders,
       signal: context.signal
     });
 
@@ -160,8 +166,10 @@ export async function latencyProbe(
     } else {
       // Use HTTP
       const url = config.baseUrl ? `${config.baseUrl}${config.url}` : config.url;
+      const probeHeaders: Record<string, string> = {};
+      if (config.authToken) probeHeaders['Authorization'] = `Bearer ${config.authToken}`;
       const start = performance.now();
-      await fetch(url, { signal: context.signal });
+      await fetch(url, { signal: context.signal, headers: probeHeaders });
       rtt = performance.now() - start;
     }
 
@@ -198,8 +206,12 @@ export async function webrtcConnect(
   const timestamp = performance.now();
 
   try {
-    // Create WebSocket for signaling
-    const ws = new WebSocket(config.signalingUrl);
+    // Create WebSocket for signaling (pass token as query param since
+    // browser WebSocket API doesn't support custom headers)
+    const signalingUrl = config.authToken
+      ? `${config.signalingUrl}?token=${encodeURIComponent(config.authToken)}`
+      : config.signalingUrl;
+    const ws = new WebSocket(signalingUrl);
 
     await new Promise<void>((resolve, reject) => {
       ws.onopen = () => resolve();

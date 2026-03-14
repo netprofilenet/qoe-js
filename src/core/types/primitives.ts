@@ -134,6 +134,7 @@ export interface HttpDownloadConfig {
   url: string;          // Endpoint URL (e.g., '/__down')
   size: number;         // Bytes to download
   baseUrl?: string;     // Base URL (if not included in url)
+  authToken?: string;   // Bearer token for authenticated servers
 }
 
 /**
@@ -144,6 +145,7 @@ export interface HttpUploadConfig {
   url: string;          // Endpoint URL (e.g., '/__up')
   size: number;         // Bytes to upload
   baseUrl?: string;     // Base URL (if not included in url)
+  authToken?: string;   // Bearer token for authenticated servers
 }
 
 /**
@@ -153,6 +155,7 @@ export interface LatencyProbeConfig {
   type: 'latencyProbe';
   url: string;          // Endpoint URL (e.g., '/__latency')
   baseUrl?: string;     // Base URL (if not included in url)
+  authToken?: string;   // Bearer token for authenticated servers
   useWebRTC?: boolean;  // Use WebRTC instead of HTTP (requires connection)
   connectionRef?: string; // Reference to WebRTC connection step ID
 }
@@ -164,6 +167,7 @@ export interface WebRTCConnectConfig {
   type: 'webrtcConnect';
   signalingUrl: string;    // WebSocket signaling URL
   iceServers: RTCIceServer[]; // ICE servers for NAT traversal
+  authToken?: string;   // Bearer token for authenticated servers
 }
 
 /**

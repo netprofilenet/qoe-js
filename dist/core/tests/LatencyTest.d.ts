@@ -5,6 +5,7 @@ import { EventEmitter } from '../utils/events';
 import { LatencyResult } from '../types/results';
 export interface LatencyTestConfig {
     apiBaseUrl: string;
+    authToken?: string;
     webrtcSignalingUrl: string;
     iceServers: RTCIceServer[];
     idleLatencyCount: number;

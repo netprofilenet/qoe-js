@@ -9,6 +9,7 @@ import { PacketLossResult } from '../types/results';
 
 export interface PacketLossTestConfig {
   webrtcSignalingUrl: string;
+  authToken?: string;
   iceServers: RTCIceServer[];
   packetLossCount: number;      // number of packets to send
   packetLossDuration: number;   // ms - total test duration
@@ -39,8 +40,12 @@ export class PacketLossTest {
     this.stopRequested = false;
 
     try {
-      // Create WebSocket for signaling
-      const ws = new WebSocket(this.config.webrtcSignalingUrl);
+      // Create WebSocket for signaling (pass token as query param since
+      // browser WebSocket API doesn't support custom headers)
+      const wsUrl = this.config.authToken
+        ? `${this.config.webrtcSignalingUrl}?token=${encodeURIComponent(this.config.authToken)}`
+        : this.config.webrtcSignalingUrl;
+      const ws = new WebSocket(wsUrl);
 
       await new Promise<void>((resolve, reject) => {
         ws.onopen = () => resolve();

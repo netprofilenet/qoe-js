@@ -109,6 +109,7 @@ export interface HttpDownloadConfig {
     url: string;
     size: number;
     baseUrl?: string;
+    authToken?: string;
 }
 /**
  * Configuration for HTTP upload primitive
@@ -118,6 +119,7 @@ export interface HttpUploadConfig {
     url: string;
     size: number;
     baseUrl?: string;
+    authToken?: string;
 }
 /**
  * Configuration for latency probe primitive
@@ -126,6 +128,7 @@ export interface LatencyProbeConfig {
     type: 'latencyProbe';
     url: string;
     baseUrl?: string;
+    authToken?: string;
     useWebRTC?: boolean;
     connectionRef?: string;
 }
@@ -136,6 +139,7 @@ export interface WebRTCConnectConfig {
     type: 'webrtcConnect';
     signalingUrl: string;
     iceServers: RTCIceServer[];
+    authToken?: string;
 }
 /**
  * Configuration for WebRTC latency probe primitive
